@@ -1,27 +1,35 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
-```{r setup, echo=TRUE}
+# Reproducible Research: Peer Assessment 1
+
+```r
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Loading and preprocessing the data
 First, load the data set and convert the dates into date format.
 
-```{r preprocess}
+
+```r
 activity <- read.csv(unz('activity.zip', 'activity.csv'),
                      stringsAsFactors = FALSE)
 activity$date <- lubridate::as_date(activity$date)
 head(activity)
 ```
 
+```
+##   steps       date interval
+## 1    NA 2012-10-01        0
+## 2    NA 2012-10-01        5
+## 3    NA 2012-10-01       10
+## 4    NA 2012-10-01       15
+## 5    NA 2012-10-01       20
+## 6    NA 2012-10-01       25
+```
+
 These NA's have to be dealt with. We'll look into this later.
 
 ## What is mean total number of steps taken per day?
-```{r daily, message=FALSE}
+
+```r
 require(dplyr)
 daily <- activity %>% group_by(date) %>% summarise(steps = sum(steps, na.rm=TRUE))
 hist(daily$steps, breaks=20,
@@ -31,6 +39,11 @@ hist(daily$steps, breaks=20,
 axis(1, at=seq(0,22000,by=1000),
      labels=FALSE,
      tcl=0)
+```
+
+![](PA1_template_files/figure-html/daily-1.png)<!-- -->
+
+```r
 mean <- round(mean(daily$steps),0)
 median <- median(daily$steps)
 plot(steps ~ date, dat=daily, type='l',
@@ -45,24 +58,30 @@ legend("topleft", legend=c('mean', 'median'),
        bty='n')
 ```
 
-The daily mean and median are `r mean` and `r median` steps, respectively.
+![](PA1_template_files/figure-html/daily-2.png)<!-- -->
+
+The daily mean and median are 9354 and 10395 steps, respectively.
 
 
 ## What is the average daily activity pattern?
-```{r interval}
+
+```r
 interval <- activity %>% group_by(interval) %>% summarize(steps=mean(steps, na.rm=TRUE))
 max <- interval %>% filter(steps==max(interval$steps))
 plot(steps ~ interval, dat=interval, type='l',
      main='Average Activity Pattern')
 ```
 
-The max steps is `r round(max$steps,0)` at interval `r max$interval`.
+![](PA1_template_files/figure-html/interval-1.png)<!-- -->
+
+The max steps is 206 at interval 835.
 
 
 ## Imputing missing values
 Let's compare the estimates when we impute with the mean and median of steps per interval to each NA.
 
-```{r imputation}
+
+```r
 nas <- table(is.na(activity$steps))
 medians <- activity %>% group_by(interval) %>%
     summarise(medians=median(steps, na.rm=TRUE))
@@ -76,10 +95,11 @@ activity <- activity %>% inner_join(replacement,
            impmean=ifelse(is.na(steps),means, steps))
 ```
 
-There are `r nas['TRUE']` NA's out of the 17568 records.
+There are 2304 NA's out of the 17568 records.
 Now let's plot and compare. I expect the estimates using the mean to exactly be the same as the estimates without imputation.
 
-```{r medianplot, echo=TRUE, message=FALSE}
+
+```r
 interval2 <- activity %>% 
     group_by(interval) %>% 
     summarize(impmedian=mean(impmedian, na.rm=TRUE),
@@ -92,7 +112,15 @@ interval %>%
     select(same) %>%
     unlist() %>%
     table()
+```
 
+```
+## .
+## TRUE 
+##  288
+```
+
+```r
 plot(steps ~ interval, dat=interval, type='l',
      ylim=c(0,210))
 par(new=TRUE)
@@ -107,12 +135,14 @@ legend("topleft", legend=c('original', 'NA\'s with mean'),
        bty='n')
 ```
 
+![](PA1_template_files/figure-html/medianplot-1.png)<!-- -->
+
 In fact, the plot above shows a complete overlap between the two.
 
 Now let's compare the Average Activity Pattern between the datasets imputed using the mean and median.
 
-```{r plot, echo=TRUE, message=FALSE}
 
+```r
 plot(impmedian ~ interval, dat=interval2, type='l', col='red',
      ylim=c(0,210),
      ylab='steps')
@@ -126,13 +156,14 @@ legend("topleft", legend=c('mean', 'median'),
        pt.cex=2,
        y.intersp = 0.7,
        bty='n')
-
 ```
+
+![](PA1_template_files/figure-html/plot-1.png)<!-- -->
 
 Using the mean increases the average activity per interval over the estimates given by using the median. What effect does this have on the Total Steps per Day?
 
-``` {r daily2}
 
+```r
 daily2 <- activity %>% group_by(date) %>% 
     summarize(impmedian=sum(impmedian, na.rm=TRUE),
               impmean=sum(impmean, na.rm=TRUE))
@@ -157,11 +188,14 @@ abline(v=lubridate::as_date('2012-11-15'),
        lwd=0.8)
 ```
 
+![](PA1_template_files/figure-html/daily2-1.png)<!-- -->
+
 It seems that using the median barely changes the total activity per day for days with 0 activity (arising from either the NAs or from really having no activity). This seems inaccurate, because on November 15, the device wearer really had a low total activity, but not because of the NA's.
 
 In contrast, using the mean gives better estimates for the NA's because the daily total activity will rarely be close to 0. November 15 really is an exception.
 
-``` {r hist}
+
+```r
 hist(daily2$impmean, breaks=22, border='blue', ylim=c(0,20),
      xlab='',
      main = '')
@@ -177,29 +211,32 @@ hist(daily2$impmedian, breaks=22, border='red', ylim=c(0,20),
 axis(1, at=seq(0,22000,by=1000),
      labels=FALSE,
      tcl=0)
+```
 
+![](PA1_template_files/figure-html/hist-1.png)<!-- -->
 
+```r
 mean(daily2$impmean)
+```
+
+```
+## [1] 10766.19
+```
+
+```r
 median(daily2$impmean)
 ```
 
-``` {r comments, echo=FALSE}
-# par(new=TRUE)
-# plot(density(daily$steps, from=0, to=22000), axes=FALSE,
-#      xlab='',ylab='', main='')
-# par(new=TRUE)
-# plot(density(daily2$impmedian, from=0, to=22000), col='red',
-#      axes=FALSE,
-#      xlab='',ylab='', main='')
-# par(new=TRUE)
-# plot(density(daily2$impmean, from=0, to=22000), col='blue',
-#      axes=FALSE,
-#      xlab='',ylab='', main='')
 ```
+## [1] 10766.19
+```
+
+
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
-```{r wdwe}
+
+```r
 new.activity <- activity %>% mutate(steps=impmean) %>%
     select(1:3) %>%
     mutate(wdwe = ifelse(weekdays(date) %in% c("Saturday",
@@ -241,8 +278,9 @@ mtext(side=1, 'Interval', outer=T,
       line=2.5)
 mtext(side=2, 'Number of steps', outer=T,
       line=2.5)
-
 ```
+
+![](PA1_template_files/figure-html/wdwe-1.png)<!-- -->
 
 There is a difference in average activity between weekdays and weekends!
 
